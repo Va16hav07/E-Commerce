@@ -1,5 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { Product } from '../types';
+import { DataProvider } from '../utils/dataProvider';
+
 const getBaseUrl = () => {
   
   const { protocol, hostname } = window.location;
@@ -41,8 +43,15 @@ export const authService = {
   // Login
   async login(email: string, password: string) {
     try {
-      const response = await api.post('/auth/login', { email, password });
-      return response.data.data;
+      // Try primary endpoint first, then fallback
+      try {
+        const response = await api.post('/auth/login', { email, password });
+        return response.data.data;
+      } catch (error) {
+        console.error('First login endpoint failed, trying alternate endpoint', error);
+        const response = await api.post('/login', { email, password });
+        return response.data.data;
+      }
     } catch (error) {
       console.error('Login error:', error);
       throw handleApiError(error as AxiosError, 'Login failed');
@@ -52,9 +61,41 @@ export const authService = {
   // Register
   async register(name: string, email: string, password: string, phone?: string) {
     try {
-      const response = await api.post('/auth/register', { name, email, password, phone });
-      return response.data.data;
+      // First try /auth/register endpoint
+      try {
+        console.log('Trying primary register endpoint: /auth/register');
+        const response = await api.post('/auth/register', { name, email, password, phone });
+        console.log('Registration successful with primary endpoint', response.data);
+        return response.data.data;
+      } catch (primaryError) {
+        console.error('Primary register endpoint failed, trying alternate endpoint', primaryError);
+        
+        // Fallback to /register endpoint
+        try {
+          console.log('Trying fallback register endpoint: /register');
+          const response = await api.post('/register', { name, email, password, phone });
+          console.log('Registration successful with fallback endpoint', response.data);
+          return response.data.data;
+        } catch (fallbackError) {
+          console.error('Fallback register endpoint failed too', fallbackError);
+          
+          // Try using the DataProvider as a last resort
+          console.log('Trying with DataProvider');
+          const data = await DataProvider.fetchWithFallback(
+            '/auth/register',
+            '/register',
+            {
+              method: 'POST',
+              body: JSON.stringify({ name, email, password, phone })
+            }
+          );
+          
+          console.log('Registration successful with DataProvider', data);
+          return data.data;
+        }
+      }
     } catch (error) {
+      console.error('Registration error:', error);
       throw handleApiError(error as AxiosError, 'Registration failed');
     }
   },

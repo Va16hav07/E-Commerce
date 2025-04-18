@@ -5,7 +5,7 @@ import { UserRole } from '../../types';
 
 export default function SignupPage() {
   const navigate = useNavigate();
-  const { currentUser, isLoading } = useAuth();
+  const { currentUser, isLoading, register } = useAuth();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -24,10 +25,16 @@ export default function SignupPage() {
     }
     
     try {
+      setIsSubmitting(true);
+      console.log('Starting registration process...');
+      await register(name, email, password, phone);
+      console.log('Registration successful, navigating to home page');
       navigate('/', { replace: true });
     } catch (err: any) {
+      console.error('Registration error:', err);
       setError(err.message || 'Failed to create an account.');
-      console.error(err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -147,10 +154,17 @@ export default function SignupPage() {
               
               <button
                 type="submit"
-                disabled={isLoading}
-                className="w-full bg-primary dark:bg-primary-dark text-white font-medium py-2 rounded-md hover:bg-primary-dark dark:hover:bg-primary-dark/90 transition-colors mb-4"
+                disabled={isSubmitting}
+                className="w-full bg-primary dark:bg-primary-dark text-white font-medium py-2 rounded-md hover:bg-primary-dark dark:hover:bg-primary-dark/90 transition-colors mb-4 flex items-center justify-center"
               >
-                {isLoading ? 'Creating account...' : 'Sign Up'}
+                {isSubmitting ? (
+                  <>
+                    <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mr-2"></span>
+                    Creating account...
+                  </>
+                ) : (
+                  'Sign Up'
+                )}
               </button>
             </form>
             
