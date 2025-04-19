@@ -252,11 +252,11 @@ export default function RiderDashboard() {
                   </button>
                 </div>
                 
-                {/* Dropdown Menu with click-based behavior instead of hover */}
+                {/* Dropdown Menu */}
                 {isProfileMenuOpen && (
                   <div 
                     className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 z-10"
-                    onMouseDown={(e) => e.preventDefault()} // Prevent blur from closing the menu when clicking inside
+                    onMouseDown={(e) => e.preventDefault()} 
                   >
                     <div className="py-1" role="menu" aria-orientation="vertical">
                       <button
@@ -273,18 +273,16 @@ export default function RiderDashboard() {
                   </div>
                 )}
               </div>
-              
-              {/* Removed mobile menu button */}
             </div>
           </div>
         </div>
       </header>
       
-      <div className="max-w-lg mx-auto px-4 py-8">
+      <div className="w-full max-w-lg mx-auto px-4 py-6 sm:py-8">
         <div className="flex flex-col items-start md:flex-row md:items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Hi, {currentUser?.name.split(' ')[0]}</h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Hi, {currentUser?.name.split(' ')[0]}</h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               {activeTab === 'orders' ? 'Here are your assigned deliveries' : 'Your profile information'}
             </p>
           </div>
@@ -304,51 +302,50 @@ export default function RiderDashboard() {
         {/* Profile Section */}
         {activeTab === 'profile' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 sm:px-6 py-5 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-center">
-                <div className="h-20 w-20 rounded-full bg-primary/20 dark:bg-primary-dark/30 flex items-center justify-center text-2xl font-bold text-primary dark:text-primary-light">
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/20 dark:bg-primary-dark/30 flex items-center justify-center text-xl sm:text-2xl font-bold text-primary dark:text-primary-light">
                   {currentUser?.name.charAt(0).toUpperCase()}
                 </div>
               </div>
-              <h2 className="mt-4 text-xl font-semibold text-center text-gray-900 dark:text-white">{currentUser?.name}</h2>
-              <p className="text-center text-gray-600 dark:text-gray-400">{currentUser?.email}</p>
+              <h2 className="mt-4 text-lg sm:text-xl font-semibold text-center text-gray-900 dark:text-white">{currentUser?.name}</h2>
+              <p className="text-center text-sm sm:text-base text-gray-600 dark:text-gray-400">{currentUser?.email}</p>
             </div>
             
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="mb-6">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Personal Information</h3>
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <h3 className="text-md sm:text-lg font-medium text-gray-900 dark:text-white mb-2">Personal Information</h3>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 sm:p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Full Name</p>
-                      <p className="font-medium dark:text-white">{currentUser?.name}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Full Name</p>
+                      <p className="text-sm sm:text-base font-medium dark:text-white">{currentUser?.name}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Email Address</p>
-                      <p className="font-medium dark:text-white">{currentUser?.email}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Email Address</p>
+                      <p className="text-sm sm:text-base font-medium dark:text-white">{currentUser?.email}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Phone Number</p>
-                      <p className="font-medium dark:text-white">{currentUser?.phone || 'Not provided'}</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Phone Number</p>
+                      <p className="text-sm sm:text-base font-medium dark:text-white">{currentUser?.phone || 'Not provided'}</p>
                     </div>
-                    {/* Removed the "Joined On" field */}
                   </div>
                 </div>
               </div>
               
               <div>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Performance</h3>
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Deliveries Completed</p>
-                      <p className="text-2xl font-bold dark:text-white">
+                <h3 className="text-md sm:text-lg font-medium text-gray-900 dark:text-white mb-2">Performance</h3>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 sm:p-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="bg-white dark:bg-gray-800 p-2 sm:p-3 rounded-lg shadow-sm">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Deliveries Completed</p>
+                      <p className="text-xl sm:text-2xl font-bold dark:text-white">
                         {riderOrders.filter(o => o.status === OrderStatus.DELIVERED).length}
                       </p>
                     </div>
-                    <div className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm">
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Pending Deliveries</p>
-                      <p className="text-2xl font-bold dark:text-white">
+                    <div className="bg-white dark:bg-gray-800 p-2 sm:p-3 rounded-lg shadow-sm">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Pending Deliveries</p>
+                      <p className="text-xl sm:text-2xl font-bold dark:text-white">
                         {riderOrders.filter(o => o.status === OrderStatus.SHIPPED).length}
                       </p>
                     </div>
@@ -364,19 +361,19 @@ export default function RiderDashboard() {
           <>
             {/* Show loading state */}
             {isLoading ? (
-              <div className="flex justify-center items-center py-10">
-                <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <div className="flex justify-center items-center py-8 sm:py-10">
+                <svg className="animate-spin h-8 w-8 sm:h-10 sm:w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               </div>
             ) : riderOrders.length === 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center">
-                <svg className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:p-6 text-center">
+                <svg className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3 sm:mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                 </svg>
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No deliveries assigned</h3>
-                <p className="text-gray-600 dark:text-gray-400">You don't have any orders assigned for delivery yet</p>
+                <h3 className="text-md sm:text-lg font-medium text-gray-900 dark:text-white mb-1">No deliveries assigned</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">You don't have any orders assigned for delivery yet</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -387,40 +384,40 @@ export default function RiderDashboard() {
                   return (
                     <div key={orderId} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
                       {/* Order Header */}
-                      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 flex justify-between items-center">
+                      <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 dark:bg-gray-700 flex flex-col sm:flex-row sm:justify-between sm:items-center">
                         <div>
                           <span className="font-medium text-gray-900 dark:text-white">Order #{orderId.substring(orderId.length - 6)}</span>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
                             {new Date(order.createdAt).toLocaleDateString()} at {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(order.status)}`}>
+                        <span className={`mt-1 sm:mt-0 self-start sm:self-center px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(order.status)}`}>
                           {order.status}
                         </span>
                       </div>
                       
                       {/* Customer Info */}
-                      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="font-medium text-gray-900 dark:text-white mb-2">Customer Details</h3>
-                        <div className="text-sm space-y-1">
+                      <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white mb-2">Customer Details</h3>
+                        <div className="text-xs sm:text-sm space-y-1">
                           <p><span className="text-gray-600 dark:text-gray-400">Name:</span> <span className="dark:text-gray-300">{order.customerName}</span></p>
                           <p><span className="text-gray-600 dark:text-gray-400">Phone:</span> <span className="dark:text-gray-300">{order.customerPhone}</span></p>
-                          <p><span className="text-gray-600 dark:text-gray-400">Address:</span> <span className="dark:text-gray-300">{order.customerAddress}</span></p>
+                          <p><span className="text-gray-600 dark:text-gray-400">Address:</span> <span className="dark:text-gray-300 break-words">{order.customerAddress}</span></p>
                         </div>
                       </div>
                       
                       {/* Order Items */}
-                      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="font-medium text-gray-900 dark:text-white mb-2">Order Items ({order.items.length})</h3>
+                      <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white mb-2">Order Items ({order.items.length})</h3>
                         <div className="space-y-2">
                           {order.items.map((item, index) => (
-                            <div key={index} className="text-sm">
-                              <div className="flex justify-between">
-                                <div className="font-medium dark:text-white">{item.productName}</div>
-                                <div className="dark:text-gray-300">₹{item.price.toLocaleString()}</div>
+                            <div key={index} className="text-xs sm:text-sm">
+                              <div className="flex justify-between items-start">
+                                <div className="font-medium dark:text-white mr-2 flex-1">{item.productName}</div>
+                                <div className="dark:text-gray-300 whitespace-nowrap">₹{item.price.toLocaleString()}</div>
                               </div>
-                              <div className="text-gray-600 dark:text-gray-400">
-                                {item.color} • {item.size} • Qty: {item.quantity}
+                              <div className="text-gray-600 dark:text-gray-400 text-xs">
+                                {item.color && item.size ? `${item.color} • ${item.size} • ` : ''} Qty: {item.quantity}
                               </div>
                             </div>
                           ))}
@@ -428,23 +425,23 @@ export default function RiderDashboard() {
                       </div>
                       
                       {/* Total */}
-                      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                      <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
                         <div className="flex justify-between font-medium">
-                          <span className="dark:text-gray-300">Total Amount:</span>
-                          <span className="dark:text-white">₹{order.totalAmount.toLocaleString()}</span>
+                          <span className="text-sm dark:text-gray-300">Total Amount:</span>
+                          <span className="text-sm dark:text-white">₹{order.totalAmount.toLocaleString()}</span>
                         </div>
                       </div>
                       
                       {/* Actions */}
                       {allowedStatuses.length > 0 && (
-                        <div className="p-4">
-                          <h3 className="font-medium text-gray-900 dark:text-white mb-2">Update Status</h3>
+                        <div className="p-3 sm:p-4">
+                          <h3 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white mb-2">Update Status</h3>
                           <div className="flex flex-wrap gap-2">
                             {allowedStatuses.map(status => (
                               <button
                                 key={status}
                                 onClick={() => handleStatusChange(orderId, status)}
-                                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
+                                className={`flex items-center px-2 sm:px-3 py-1 sm:py-2 rounded-md text-xs sm:text-sm font-medium ${
                                   status === OrderStatus.DELIVERED 
                                     ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60' 
                                     : status === OrderStatus.NOT_DELIVERED
