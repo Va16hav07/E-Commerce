@@ -79,23 +79,37 @@ export const authService = {
         } catch (fallbackError) {
           console.error('Fallback register endpoint failed too', fallbackError);
           
-          // Try using the DataProvider as a last resort
-          console.log('Trying with DataProvider');
-          const data = await DataProvider.fetchWithFallback(
-            '/auth/register',
-            '/register',
-            {
-              method: 'POST',
-              body: JSON.stringify({ name, email, password, phone })
-            }
-          );
-          
-          console.log('Registration successful with DataProvider', data);
-          return data.data;
+          // Try a third endpoint /user/register
+          try {
+            console.log('Trying second fallback endpoint: /user/register');
+            const response = await api.post('/user/register', { name, email, password, phone });
+            console.log('Registration successful with second fallback endpoint', response.data);
+            return response.data.data;
+          } catch (secondFallbackError) {
+            console.error('Second fallback register endpoint failed too', secondFallbackError);
+            
+            // Try using the DataProvider as a last resort
+            console.log('Trying with DataProvider');
+            const data = await DataProvider.fetchWithFallback(
+              '/auth/register',
+              '/register',
+              {
+                method: 'POST',
+                body: JSON.stringify({ name, email, password, phone }),
+                credentials: 'include'
+              }
+            );
+            
+            console.log('Registration successful with DataProvider', data);
+            return data.data;
+          }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
+      if (error.response) {
+        console.error('Error response:', error.response.data);
+      }
       throw handleApiError(error as AxiosError, 'Registration failed');
     }
   },
