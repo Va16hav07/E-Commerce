@@ -2,7 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Add base dark mode setup */
 :root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 255, 255;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -15,6 +18,22 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.dark {
+  --foreground-rgb: 255, 255, 255;
+  --background-rgb: 17, 24, 39;
+}
+
+/* Apply transition for smoother theme switching */
+* {
+  transition-property: color, background-color, border-color;
+  transition-duration: 200ms;
+}
+
+/* Ensure html and body cover full viewport */
+html, body {
+  height: 100%;
 }
 
 /* Set up dark mode at root level */

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Order } from '../../types';
-import { useAuth } from '../../context/AuthContext';  
+import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { orderAPI } from '../../services/api';
 
 // Define simplified OrderStatus enum to match the backend's expected values
@@ -14,7 +15,8 @@ enum SimplifiedOrderStatus {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { logout, currentUser } = useAuth();  
+  const { logout, currentUser } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<'orders' | 'riders'>('orders');
   const [orderList, setOrderList] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -319,14 +321,33 @@ export default function AdminDashboard() {
       <div className="w-full md:w-64 bg-white dark:bg-gray-800 shadow-md md:min-h-screen">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-800 dark:text-white">Admin Panel CoolGarmi</h2>
-          <button 
-            className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
-            onClick={() => setActiveTab(activeTab === 'orders' ? 'riders' : 'orders')}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-            </svg>
-          </button>
+          <div className="flex items-center">
+            {/* Theme toggle button */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary mr-2"
+              aria-label="Toggle dark mode"
+            >
+              {theme === 'dark' ? (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            
+            <button 
+              className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+              onClick={() => setActiveTab(activeTab === 'orders' ? 'riders' : 'orders')}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="py-4">
           <ul>
@@ -499,10 +520,21 @@ export default function AdminDashboard() {
                                     onChange={(e) => handleStatusChange(orderId, e.target.value as SimplifiedOrderStatus)}
                                     className="text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-md px-1 md:px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary dark:bg-gray-700 dark:text-white"
                                     defaultValue=""
+                                    style={{ 
+                                      color: theme === 'dark' ? '#f9fafb' : '#374151', // Light gray in dark mode, dark gray in light mode
+                                      appearance: 'menulist-button'  // Ensures dropdown arrow appears
+                                    }}
                                   >
-                                    <option value="" disabled>Change status</option>
+                                    <option value="" disabled style={{ color: '#6B7280' }}>Change status</option>
                                     {allowedStatuses.map((status) => (
-                                      <option key={status} value={status}>
+                                      <option 
+                                        key={status} 
+                                        value={status}
+                                        style={{ 
+                                          color: theme === 'dark' ? '#f9fafb' : '#374151',
+                                          backgroundColor: theme === 'dark' ? '#4B5563' : 'white' 
+                                        }}
+                                      >
                                         {status}
                                       </option>
                                     ))}

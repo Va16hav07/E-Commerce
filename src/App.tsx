@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { UserRole } from './types/index';
+import { ThemeProvider } from './context/ThemeContext';
 
 // Layout components
 import Layout from './components/Layout';
@@ -69,147 +70,151 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
 
 function App() {
   return (
-    <Layout>
-      <Routes>
-        {/* Public Routes with Role Restrictions */}
-        <Route path="/" element={
-          <RoleRedirect 
-            restrictedRoles={[UserRole.ADMIN, UserRole.RIDER]} 
-            redirectPaths={{
-              [UserRole.ADMIN]: '/admin/dashboard',
-              [UserRole.RIDER]: '/rider/dashboard',
-              [UserRole.CUSTOMER]: '/'
-            }}
-          >
-            <HomePage />
-          </RoleRedirect>
-        } />
-        
-        {/* Other public routes that should also restrict admin/rider access */}
-        <Route path="/products" element={
-          <RoleRedirect 
-            restrictedRoles={[UserRole.ADMIN, UserRole.RIDER]} 
-            redirectPaths={{
-              [UserRole.ADMIN]: '/admin/dashboard',
-              [UserRole.RIDER]: '/rider/dashboard',
-              [UserRole.CUSTOMER]: '/products'
-            }}
-          >
-            <ProductListingPage />
-          </RoleRedirect>
-        } />
-        
-        <Route path="/product/:id" element={
-          <RoleRedirect 
-            restrictedRoles={[UserRole.ADMIN, UserRole.RIDER]} 
-            redirectPaths={{
-              [UserRole.ADMIN]: '/admin/dashboard',
-              [UserRole.RIDER]: '/rider/dashboard',
-              [UserRole.CUSTOMER]: '/product/:id'
-            }}
-          >
-            <ProductDetailPage />
-          </RoleRedirect>
-        } />
-        
-        <Route path="/cart" element={
-          <RoleRedirect 
-            restrictedRoles={[UserRole.ADMIN, UserRole.RIDER]} 
-            redirectPaths={{
-              [UserRole.ADMIN]: '/admin/dashboard',
-              [UserRole.RIDER]: '/rider/dashboard',
-              [UserRole.CUSTOMER]: '/cart'
-            }}
-          >
-            <CartPage />
-          </RoleRedirect>
-        } />
-        
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        
-        {/* Contact Page - Public Route */}
-        <Route path="/contact" element={<ContactPage />} />
-        
-        {/* Protected Customer Routes */}
-        <Route 
-          path="/checkout" 
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.CUSTOMER]}>
-              <CheckoutPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/order-success" 
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.CUSTOMER]}>
-              <OrderSuccessPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/account" 
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.CUSTOMER]}>
-              <AccountPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/orders" 
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.CUSTOMER]}>
-              <OrdersPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route path="/orders/:id" element={<OrderDetailPage />} />
-        
-        {/* Admin Routes */}
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        {/* Add explicit admin dashboard route */}
-        <Route 
-          path="/admin/dashboard" 
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Rider Routes */}
-        <Route 
-          path="/rider" 
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.RIDER]}>
-              <RiderDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        {/* Add explicit rider dashboard route */}
-        <Route 
-          path="/rider/dashboard" 
-          element={
-            <ProtectedRoute allowedRoles={[UserRole.RIDER]}>
-              <RiderDashboard />
-            </ProtectedRoute>
-          } 
-        />
-        
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        
-        {/* 404 Route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
+    <ThemeProvider>
+      <AuthProvider>
+        <Layout>
+          <Routes>
+            {/* Public Routes with Role Restrictions */}
+            <Route path="/" element={
+              <RoleRedirect 
+                restrictedRoles={[UserRole.ADMIN, UserRole.RIDER]} 
+                redirectPaths={{
+                  [UserRole.ADMIN]: '/admin/dashboard',
+                  [UserRole.RIDER]: '/rider/dashboard',
+                  [UserRole.CUSTOMER]: '/'
+                }}
+              >
+                <HomePage />
+              </RoleRedirect>
+            } />
+            
+            {/* Other public routes that should also restrict admin/rider access */}
+            <Route path="/products" element={
+              <RoleRedirect 
+                restrictedRoles={[UserRole.ADMIN, UserRole.RIDER]} 
+                redirectPaths={{
+                  [UserRole.ADMIN]: '/admin/dashboard',
+                  [UserRole.RIDER]: '/rider/dashboard',
+                  [UserRole.CUSTOMER]: '/products'
+                }}
+              >
+                <ProductListingPage />
+              </RoleRedirect>
+            } />
+            
+            <Route path="/product/:id" element={
+              <RoleRedirect 
+                restrictedRoles={[UserRole.ADMIN, UserRole.RIDER]} 
+                redirectPaths={{
+                  [UserRole.ADMIN]: '/admin/dashboard',
+                  [UserRole.RIDER]: '/rider/dashboard',
+                  [UserRole.CUSTOMER]: '/product/:id'
+                }}
+              >
+                <ProductDetailPage />
+              </RoleRedirect>
+            } />
+            
+            <Route path="/cart" element={
+              <RoleRedirect 
+                restrictedRoles={[UserRole.ADMIN, UserRole.RIDER]} 
+                redirectPaths={{
+                  [UserRole.ADMIN]: '/admin/dashboard',
+                  [UserRole.RIDER]: '/rider/dashboard',
+                  [UserRole.CUSTOMER]: '/cart'
+                }}
+              >
+                <CartPage />
+              </RoleRedirect>
+            } />
+            
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            
+            {/* Contact Page - Public Route */}
+            <Route path="/contact" element={<ContactPage />} />
+            
+            {/* Protected Customer Routes */}
+            <Route 
+              path="/checkout" 
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.CUSTOMER]}>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/order-success" 
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.CUSTOMER]}>
+                  <OrderSuccessPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/account" 
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.CUSTOMER]}>
+                  <AccountPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/orders" 
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.CUSTOMER]}>
+                  <OrdersPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/orders/:id" element={<OrderDetailPage />} />
+            
+            {/* Admin Routes */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Add explicit admin dashboard route */}
+            <Route 
+              path="/admin/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Rider Routes */}
+            <Route 
+              path="/rider" 
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.RIDER]}>
+                  <RiderDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            {/* Add explicit rider dashboard route */}
+            <Route 
+              path="/rider/dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.RIDER]}>
+                  <RiderDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            
+            {/* 404 Route */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Layout>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

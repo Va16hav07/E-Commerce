@@ -13,7 +13,6 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  // ...other user fields
 }
 
 // Add other types if needed
@@ -24,5 +23,4 @@ export enum OrderStatus {
   NOT_DELIVERED = 'NOT_DELIVERED',
 }
 
-// This is a barrel file that re-exports everything from types/index.ts
 export * from './types/index';
