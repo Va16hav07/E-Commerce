@@ -68,7 +68,7 @@ export default function OrderSuccessPage() {
               <span className="font-medium text-gray-900 dark:text-white">₹{state.orderAmount.toLocaleString()}</span>
             </div>
             
-            {/* Shipping Status - Only show payment status, not rider info */}
+            {/* Shipping Status */}
             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center text-gray-600 dark:text-gray-300">
@@ -79,7 +79,7 @@ export default function OrderSuccessPage() {
                   Paid
                 </span>
               </div>
-              {/* No rider information displayed here */}
+              {}
             </div>
           </div>
           

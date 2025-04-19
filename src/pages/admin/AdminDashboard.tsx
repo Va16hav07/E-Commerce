@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Order, OrderStatus } from '../../types';
+import { Order } from '../../types';
 import { useAuth } from '../../context/AuthContext';  
 import { orderAPI } from '../../services/api';
 
@@ -314,13 +314,11 @@ export default function AdminDashboard() {
   };
   
   return (
-    // Full page admin dashboard with sidebar layout - now with responsive design
+    
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Sidebar - collapsible on mobile */}
       <div className="w-full md:w-64 bg-white dark:bg-gray-800 shadow-md md:min-h-screen">
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-800 dark:text-white">Admin Panel CoolGarmi</h2>
-          {/* Mobile menu button - only visible on small screens */}
           <button 
             className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
             onClick={() => setActiveTab(activeTab === 'orders' ? 'riders' : 'orders')}
