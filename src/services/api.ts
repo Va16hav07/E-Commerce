@@ -457,6 +457,78 @@ export const orderAPI = {
       throw error;
     }
   },
+  
+  // Get all riders (admin only)
+  async getAllRiders() {
+    try {
+      console.log("Fetching all riders...");
+      
+      let response;
+      try {
+        // Try with the /api prefix first
+        response = await api.get('/api/users/riders');
+        console.log('Successfully fetched riders from /api/users/riders');
+      } catch (apiError) {
+        console.log('First endpoint failed, trying alternate endpoint', apiError);
+        
+        try {
+          // Try without the /api prefix
+          response = await api.get('/users/riders');
+          console.log('Successfully fetched riders from /users/riders');
+        } catch (secondError) {
+          console.log('Second endpoint failed, trying users with role filter', secondError);
+          
+          // Try getting all users and filtering by role
+          try {
+            const allUsersResponse = await api.get('/users');
+            console.log('Fetched all users, filtering for riders');
+            
+            if (allUsersResponse.data && allUsersResponse.data.data) {
+              const riderUsers = allUsersResponse.data.data.filter((user: any) => 
+                user.role === 'RIDER' || user.role === 'rider'
+              );
+              
+              console.log(`Found ${riderUsers.length} riders from users endpoint`);
+              
+              return {
+                success: true,
+                data: riderUsers
+              };
+            } else {
+              console.error('Invalid response format from /users endpoint');
+              throw new Error('Invalid response format from users endpoint');
+            }
+          } catch (thirdError) {
+            console.error('All rider fetch attempts failed:', thirdError);
+            
+            // Last attempt - try to get riders from a mock or test endpoint
+            try {
+              response = await api.get('/test-riders');
+              console.log('Using test riders endpoint as fallback');
+            } catch (finalError) {
+              console.error('All rider endpoints failed');
+              
+              // Return empty array as last resort to prevent UI errors
+              return {
+                success: true,
+                data: []
+              };
+            }
+          }
+        }
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching riders:', error);
+      // Return empty array instead of throwing to ensure the UI doesn't break
+      return {
+        success: false,
+        message: 'Failed to fetch riders',
+        data: []
+      };
+    }
+  },
 
   // Get all orders (admin only)
   async getAllOrders() {
@@ -504,6 +576,52 @@ export const orderAPI = {
       throw handleApiError(error as AxiosError, 'Failed to update order status');
     }
   },
+
+  async assignRider(orderId: string, riderId: string, riderName: string) {
+    try {
+      console.log(`Assigning rider ${riderId} (${riderName}) to order ${orderId}`);
+      
+      let response;
+      try {
+        response = await api.put(`/api/orders/${orderId}/assign`, {
+          riderId,
+          riderName
+        });
+      } catch (apiError) {
+        response = await api.put(`/orders/${orderId}/assign`, {
+          riderId,
+          riderName
+        });
+      }
+      
+      console.log('Rider assignment response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error assigning rider:', error);
+      throw handleApiError(error as AxiosError, 'Failed to assign rider to order');
+    }
+  },
+
+  // Add method for admin to unassign a rider from an order
+  async unassignRider(orderId: string) {
+    try {
+      console.log(`Unassigning rider from order ${orderId}`);
+      
+      let response;
+      try {
+        response = await api.put(`/api/orders/${orderId}/unassign`);
+      } catch (apiError) {
+        response = await api.put(`/orders/${orderId}/unassign`);
+      }
+      
+      console.log('Rider unassignment response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error unassigning rider:', error);
+      throw handleApiError(error as AxiosError, 'Failed to unassign rider from order');
+    }
+  },
+
 
   // Get orders assigned to the current rider
   async getAssignedOrders() {

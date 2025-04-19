@@ -18,11 +18,8 @@ export interface User {
 
 // Add other types if needed
 export enum OrderStatus {
-  PLACED = 'PLACED',
   PAID = 'PAID',
   SHIPPED = 'SHIPPED',
-  IN_TRANSIT = 'IN_TRANSIT',
-  ON_THE_WAY = 'ON_THE_WAY',
   DELIVERED = 'DELIVERED',
   UNDELIVERED = 'UNDELIVERED',
 }

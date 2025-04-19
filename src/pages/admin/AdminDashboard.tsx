@@ -4,6 +4,14 @@ import { Order, OrderStatus } from '../../types';
 import { useAuth } from '../../context/AuthContext';  
 import { orderAPI } from '../../services/api';
 
+// Define simplified OrderStatus enum to match the backend's expected values
+enum SimplifiedOrderStatus {
+  PAID = 'PAID',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  UNDELIVERED = 'UNDELIVERED'
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { logout, currentUser } = useAuth();  
@@ -14,6 +22,13 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // New state for rider management
+  const [riderList, setRiderList] = useState<any[]>([]);
+  const [showAssignRiderModal, setShowAssignRiderModal] = useState(false);
+  const [orderToAssign, setOrderToAssign] = useState<Order | null>(null);
+  const [selectedRiderId, setSelectedRiderId] = useState<string>('');
+  const [assigningRider, setAssigningRider] = useState(false);
+
   // Check authentication on load
   useEffect(() => {
     if (!currentUser) {
@@ -30,6 +45,7 @@ export default function AdminDashboard() {
     if (currentUser && currentUser.role === 'ADMIN') {
       console.log("Admin user authenticated, fetching orders...");
       fetchOrders();
+      fetchRiders(); // Fetch riders for assignment
     }
   }, [currentUser]);
   
@@ -55,6 +71,28 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   };
+
+  // Function to fetch all riders
+  const fetchRiders = async () => {
+    try {
+      console.log("Fetching riders for admin dashboard...");
+      setError(null);
+      
+      // Use the proper API method we just created
+      const response = await orderAPI.getAllRiders();
+      
+      if (response && response.success) {
+        console.log("Riders fetched successfully:", response.data);
+        setRiderList(response.data);
+      } else {
+        console.error('Failed to fetch riders:', response);
+        setError('Failed to load riders data.');
+      }
+    } catch (err: any) {
+      console.error('Error fetching riders:', err);
+      setError(err.message || 'An error occurred while fetching riders.');
+    }
+  };
   
   // Group orders by rider
   const ordersByRider: Record<string, Order[]> = {};
@@ -78,7 +116,7 @@ export default function AdminDashboard() {
   };
 
   // Handle status change with API call
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+  const handleStatusChange = async (orderId: string, newStatus: SimplifiedOrderStatus) => {
     try {
       setError(null);
       console.log(`Updating order ${orderId} status to ${newStatus} as admin`);
@@ -99,6 +137,78 @@ export default function AdminDashboard() {
     }
   };
 
+  // Function to show the assign rider modal
+  const showAssignRider = (order: Order) => {
+    setOrderToAssign(order);
+    setSelectedRiderId('');
+    setShowAssignRiderModal(true);
+  };
+
+  // Function to close the assign rider modal
+  const closeAssignRiderModal = () => {
+    setShowAssignRiderModal(false);
+    setOrderToAssign(null);
+    setSelectedRiderId('');
+  };
+
+  // Function to assign a rider to an order
+  const handleAssignRider = async () => {
+    if (!orderToAssign || !selectedRiderId) {
+      setError('Please select a rider to assign.');
+      return;
+    }
+
+    try {
+      setAssigningRider(true);
+      
+      // Find the rider name from the rider list
+      const selectedRider = riderList.find(rider => rider._id === selectedRiderId);
+      if (!selectedRider) {
+        throw new Error('Selected rider not found');
+      }
+      
+      const response = await orderAPI.assignRider(
+        orderToAssign._id, 
+        selectedRiderId,
+        selectedRider.name
+      );
+      
+      if (response && response.success) {
+        await fetchOrders(); // Refresh orders list
+        closeAssignRiderModal();
+      } else {
+        setError('Failed to assign rider.');
+      }
+    } catch (err: any) {
+      console.error('Error assigning rider:', err);
+      setError(err.message || 'An error occurred while assigning rider.');
+    } finally {
+      setAssigningRider(false);
+    }
+  };
+
+  // Function to unassign a rider from an order
+  const handleUnassignRider = async (orderId: string) => {
+    try {
+      setError(null);
+      console.log(`Unassigning rider from order ${orderId}`);
+      
+      const response = await orderAPI.unassignRider(orderId);
+      
+      if (response && response.success) {
+        console.log('Rider unassignment successful:', response);
+        // Refresh orders to get the updated data
+        await fetchOrders();
+      } else {
+        console.error('Rider unassignment failed:', response);
+        setError('Failed to unassign rider.');
+      }
+    } catch (err: any) {
+      console.error('Error unassigning rider:', err);
+      setError(err.message || 'An error occurred while unassigning rider.');
+    }
+  };
+
   // Function to handle View button click
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
@@ -112,33 +222,31 @@ export default function AdminDashboard() {
   };
   
   // Function to get allowed next statuses for admin based on current status
-  const getAllowedStatusesForAdmin = (currentStatus: OrderStatus): OrderStatus[] => {
+  const getAllowedStatusesForAdmin = (currentStatus: string): SimplifiedOrderStatus[] => {
     switch (currentStatus) {
-      case OrderStatus.PAID:
-        return [OrderStatus.SHIPPED];
-      case OrderStatus.SHIPPED:
-        return [OrderStatus.IN_TRANSIT];
+      case SimplifiedOrderStatus.PAID:
+        return [SimplifiedOrderStatus.SHIPPED];
+      case SimplifiedOrderStatus.SHIPPED:
+        return [SimplifiedOrderStatus.DELIVERED, SimplifiedOrderStatus.UNDELIVERED];
+      case SimplifiedOrderStatus.DELIVERED:
+      case SimplifiedOrderStatus.UNDELIVERED:
+        // Terminal states - no further transitions
+        return [];
       default:
         return [];
     }
   };
   
   // Function to get badge color based on order status
-  const getStatusBadgeClass = (status: OrderStatus): string => {
+  const getStatusBadgeClass = (status: string): string => {
     switch (status) {
-      case OrderStatus.PLACED:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-      case OrderStatus.PAID:
+      case SimplifiedOrderStatus.PAID:
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case OrderStatus.SHIPPED:
+      case SimplifiedOrderStatus.SHIPPED:
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case OrderStatus.IN_TRANSIT:
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case OrderStatus.ON_THE_WAY:
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
-      case OrderStatus.DELIVERED:
+      case SimplifiedOrderStatus.DELIVERED:
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case OrderStatus.UNDELIVERED:
+      case SimplifiedOrderStatus.UNDELIVERED:
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
@@ -270,8 +378,26 @@ export default function AdminDashboard() {
                                 {order.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                              {order.riderName || 'Not assigned'}
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {order.riderId ? (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-900 dark:text-white">{order.riderName}</span>
+                                  <button
+                                    onClick={() => handleUnassignRider(orderId)}
+                                    className="ml-2 text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                    title="Unassign rider"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => showAssignRider(order)}
+                                  className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                >
+                                  Assign Rider
+                                </button>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900 dark:text-white">
@@ -292,7 +418,7 @@ export default function AdminDashboard() {
                                 
                                 {allowedStatuses.length > 0 && (
                                   <select
-                                    onChange={(e) => handleStatusChange(orderId, e.target.value as OrderStatus)}
+                                    onChange={(e) => handleStatusChange(orderId, e.target.value as SimplifiedOrderStatus)}
                                     className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary dark:bg-gray-700 dark:text-white"
                                     defaultValue=""
                                   >
@@ -318,45 +444,159 @@ export default function AdminDashboard() {
           
           {/* Riders Tab Content */}
           {activeTab === 'riders' && !loading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Object.entries(ordersByRider).map(([riderId, riderOrders]) => {
-                const firstOrder = riderOrders[0]; // To get rider name
-                if (!firstOrder) return null;
-                
-                
-                return (
-                  <div key={riderId} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                    <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4">
-                      <h3 className="font-medium text-gray-900 dark:text-white">{firstOrder.riderName}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">ID: {riderId}</p>
-                    </div>
-                    <div className="p-6">
-                      <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Assigned Orders</h4>
-                      <div className="space-y-2">
-                        {riderOrders.map(order => (
-                          <div key={order._id || order.id} className="border border-gray-200 dark:border-gray-700 rounded-md p-3">
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium dark:text-white">
-                                #{(order._id || order.id || '').substring((order._id || order.id || '').length - 6)}
-                              </span>
-                              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(order.status)}`}>
-                                {order.status}
-                              </span>
-                            </div>
-                            <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                              {order.customerName} • ₹{order.totalAmount.toLocaleString()}
+            <div>
+              {/* Summary stats for riders */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Total Riders</h3>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{riderList.length}</p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Active Riders</h3>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {Object.keys(ordersByRider).length}
+                  </p>
+                </div>
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Available Riders</h3>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {riderList.length - Object.keys(ordersByRider).length}
+                  </p>
+                </div>
+              </div>
+              
+              {/* All riders list */}
+              <div className="mb-8">
+                <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">All Riders</h2>
+                {riderList.length === 0 ? (
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 text-center text-gray-500 dark:text-gray-400">
+                    No riders found in the system
+                  </div>
+                ) : (
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {riderList.map(rider => {
+                          const riderOrders = ordersByRider[rider._id] || [];
+                          const isActive = riderOrders.length > 0;
+                          
+                          return (
+                            <tr key={rider._id}>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                                    {rider.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{rider.name}</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">ID: {rider._id.substring(rider._id.length - 6)}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm text-gray-900 dark:text-white">{rider.email}</div>
+                                <div className="text-sm text-gray-500 dark:text-gray-400">{rider.phone || 'No phone'}</div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                  isActive 
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500' 
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+                                }`}>
+                                  {isActive ? 'Active' : 'Available'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                {riderOrders.length > 0 ? (
+                                  <div className="flex items-center">
+                                    <span>{riderOrders.length} {riderOrders.length === 1 ? 'order' : 'orders'}</span>
+                                  </div>
+                                ) : (
+                                  'No orders assigned'
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+              
+              {/* Riders with assigned orders */}
+              {Object.keys(ordersByRider).length > 0 && (
+                <div>
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Riders with Assigned Orders</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Object.entries(ordersByRider).map(([riderId, riderOrders]) => {
+                      const firstOrder = riderOrders[0]; // To get rider name
+                      if (!firstOrder) return null;
+                      
+                      // Find the rider from the full list to get more details
+                      const riderDetails = riderList.find(rider => rider._id === riderId);
+                      
+                      return (
+                        <div key={riderId} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                          <div className="bg-gray-50 dark:bg-gray-700 px-6 py-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-medium text-gray-900 dark:text-white">{firstOrder.riderName}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {riderDetails?.phone || 'No phone'} • {riderDetails?.email || 'No email'}
+                                </p>
+                              </div>
+                              <div className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500 rounded-full text-xs">
+                                Active
+                              </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                          <div className="p-6">
+                            <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Assigned Orders</h4>
+                            <div className="space-y-2">
+                              {riderOrders.map(order => (
+                                <div key={order._id || order.id} className="border border-gray-200 dark:border-gray-700 rounded-md p-3">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium dark:text-white">
+                                      #{(order._id || order.id || '').substring((order._id || order.id || '').length - 6)}
+                                    </span>
+                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(order.status)}`}>
+                                      {order.status}
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                    {order.customerName} • ₹{order.totalAmount.toLocaleString()}
+                                  </div>
+                                  <div className="mt-2 flex justify-between">
+                                    <button
+                                      onClick={() => handleViewOrder(order)}
+                                      className="text-xs text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-primary-light/80"
+                                    >
+                                      View Details
+                                    </button>
+                                    <button
+                                      onClick={() => handleUnassignRider(order._id || order.id || '')}
+                                      className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                    >
+                                      Unassign
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-              
-              {Object.keys(ordersByRider).length === 0 && (
-                <div className="col-span-full text-center py-8 text-gray-500 dark:text-gray-400">
-                  No riders with assigned orders found
                 </div>
               )}
             </div>
@@ -466,19 +706,41 @@ export default function AdminDashboard() {
               </div>
               
               {/* Rider Information (if assigned) */}
-              {selectedOrder.riderId && (
-                <div className="mt-6">
-                  <h4 className="font-medium text-gray-800 dark:text-white mb-2">Delivery Information</h4>
+              <div className="mt-6">
+                <h4 className="font-medium text-gray-800 dark:text-white mb-2">Delivery Information</h4>
+                {selectedOrder.riderId ? (
                   <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
-                    <div className="flex items-center">
-                      <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div>
                         <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedOrder.riderName}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Rider ID: {selectedOrder.riderId}</p>
                       </div>
+                      <button
+                        onClick={() => {
+                          closeOrderModal(); // Close the view modal
+                          handleUnassignRider(selectedOrder._id || selectedOrder.id || '');
+                        }}
+                        className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 px-3 py-1 border border-red-600 dark:border-red-400 rounded-md"
+                      >
+                        Unassign Rider
+                      </button>
                     </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No rider assigned</p>
+                    <button
+                      onClick={() => {
+                        closeOrderModal(); // Close the view modal
+                        showAssignRider(selectedOrder);
+                      }}
+                      className="mt-2 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 px-3 py-1 border border-blue-600 dark:border-blue-400 rounded-md"
+                    >
+                      Assign Rider
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-end">
               <button 
@@ -487,6 +749,68 @@ export default function AdminDashboard() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Assign Rider Modal */}
+      {showAssignRiderModal && orderToAssign && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full">
+            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 p-4">
+              <h3 className="text-xl font-medium text-gray-900 dark:text-white">
+                Assign Rider to Order #{(orderToAssign._id || orderToAssign.id || '').substring((orderToAssign._id || orderToAssign.id || '').length - 6)}
+              </h3>
+              <button 
+                onClick={closeAssignRiderModal}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Select Rider
+                </label>
+                {riderList.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No riders available</p>
+                ) : (
+                  <select
+                    value={selectedRiderId}
+                    onChange={(e) => setSelectedRiderId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">-- Select a Rider --</option>
+                    {riderList.map(rider => (
+                      <option key={rider._id} value={rider._id}>
+                        {rider.name} ({rider.phone || 'No phone'})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={closeAssignRiderModal}
+                  className="bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 px-4 py-2 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAssignRider}
+                  disabled={!selectedRiderId || assigningRider}
+                  className={`bg-primary hover:bg-primary-dark dark:bg-primary-dark dark:hover:bg-primary text-white px-4 py-2 rounded-md text-sm font-medium ${
+                    !selectedRiderId || assigningRider ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {assigningRider ? 'Assigning...' : 'Assign Rider'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
