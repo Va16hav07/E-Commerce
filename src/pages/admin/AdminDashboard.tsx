@@ -13,6 +13,10 @@ enum SimplifiedOrderStatus {
   NOT_DELIVERED = 'NOT_DELIVERED'
 }
 
+// Sort field type
+type SortField = 'date' | 'status' | 'amount' | 'customerName';
+type SortDirection = 'asc' | 'desc';
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { logout, currentUser } = useAuth();
@@ -30,6 +34,12 @@ export default function AdminDashboard() {
   const [orderToAssign, setOrderToAssign] = useState<Order | null>(null);
   const [selectedRiderId, setSelectedRiderId] = useState<string>('');
   const [assigningRider, setAssigningRider] = useState(false);
+  
+  // New state for sorting and searching
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
 
   // Check authentication on load
   useEffect(() => {
@@ -50,6 +60,67 @@ export default function AdminDashboard() {
       fetchRiders(); // Fetch riders for assignment
     }
   }, [currentUser]);
+  
+  // Filter and sort orders whenever relevant state changes
+  useEffect(() => {
+    let result = [...orderList];
+    
+    // Apply search filter if query exists
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(order => 
+        (order.customerName && order.customerName.toLowerCase().includes(query)) ||
+        (order.customerPhone && order.customerPhone.toLowerCase().includes(query)) ||
+        (order._id && order._id.toLowerCase().includes(query)) ||
+        (order.id && order.id.toLowerCase().includes(query)) ||
+        (order.status && order.status.toLowerCase().includes(query)) ||
+        (order.totalAmount && order.totalAmount.toString().includes(query))
+      );
+    }
+    
+    // Apply sorting
+    result = sortOrders(result, sortField, sortDirection);
+    
+    setFilteredOrders(result);
+  }, [orderList, searchQuery, sortField, sortDirection]);
+  
+  // Function to sort orders
+  const sortOrders = (orders: Order[], field: SortField, direction: SortDirection): Order[] => {
+    return [...orders].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (field) {
+        case 'date':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'status':
+          comparison = (a.status || '').localeCompare(b.status || '');
+          break;
+        case 'amount':
+          comparison = (a.totalAmount || 0) - (b.totalAmount || 0);
+          break;
+        case 'customerName':
+          comparison = (a.customerName || '').localeCompare(b.customerName || '');
+          break;
+        default:
+          comparison = 0;
+      }
+      
+      return direction === 'asc' ? comparison : -comparison;
+    });
+  };
+  
+  // Toggle sort direction or change sort field
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default to descending
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
   
   // Function to fetch all orders from the backend
   const fetchOrders = async () => {
@@ -314,6 +385,27 @@ export default function AdminDashboard() {
     }
     return new Date(dateString);
   };
+
+  // Function to get sort icon based on current sort state
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return (
+        <svg className="w-4 h-4 ml-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+        </svg>
+      );
+    }
+    
+    return sortDirection === 'asc' ? (
+      <svg className="w-4 h-4 ml-1 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+      </svg>
+    ) : (
+      <svg className="w-4 h-4 ml-1 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    );
+  };
   
   return (
     
@@ -411,28 +503,85 @@ export default function AdminDashboard() {
           {/* Orders Tab Content - with scroll for small screens */}
           {activeTab === 'orders' && !loading && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+              {/* Search and filter controls */}
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Search orders by name, ID, phone, status..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md w-full focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end space-x-2">
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Found: {filteredOrders.length}</span>
+                  </div>
+                </div>
+              </div>
+              
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
-                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
-                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <button
+                          onClick={() => handleSort('date')}
+                          className="flex items-center focus:outline-none"
+                        >
+                          Order ID
+                          {getSortIcon('date')}
+                        </button>
+                      </th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <button
+                          onClick={() => handleSort('customerName')}
+                          className="flex items-center focus:outline-none"
+                        >
+                          Customer
+                          {getSortIcon('customerName')}
+                        </button>
+                      </th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <button
+                          onClick={() => handleSort('amount')}
+                          className="flex items-center focus:outline-none"
+                        >
+                          Amount
+                          {getSortIcon('amount')}
+                        </button>
+                      </th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <button
+                          onClick={() => handleSort('status')}
+                          className="flex items-center focus:outline-none"
+                        >
+                          Status
+                          {getSortIcon('status')}
+                        </button>
+                      </th>
                       <th className="hidden md:table-cell px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rider</th>
                       <th className="hidden md:table-cell px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
                       <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {orderList.length === 0 ? (
+                    {filteredOrders.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-3 md:px-6 py-4 text-center text-gray-500 dark:text-gray-400">
-                          No orders found
+                          {searchQuery ? 'No orders found matching your search' : 'No orders found'}
                         </td>
                       </tr>
                     ) : (
-                      orderList.map((order) => {
+                      filteredOrders.map((order) => {
                         const allowedStatuses = getAllowedStatusesForAdmin(order.status);
                         const createdAt = formatDate(order.createdAt);
                         const updatedAt = formatDate(order.updatedAt);
