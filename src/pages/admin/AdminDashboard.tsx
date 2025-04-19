@@ -9,7 +9,7 @@ enum SimplifiedOrderStatus {
   PAID = 'PAID',
   SHIPPED = 'SHIPPED',
   DELIVERED = 'DELIVERED',
-  UNDELIVERED = 'UNDELIVERED'
+  NOT_DELIVERED = 'NOT_DELIVERED'
 }
 
 export default function AdminDashboard() {
@@ -125,6 +125,12 @@ export default function AdminDashboard() {
       
       if (response && response.success) {
         console.log('Status update successful:', response);
+        
+        // Auto-assign rider when status changes to SHIPPED
+        if (newStatus === SimplifiedOrderStatus.SHIPPED) {
+          await autoAssignRider(orderId);
+        }
+        
         // Refresh orders to get the updated data
         await fetchOrders();
       } else {
@@ -134,6 +140,52 @@ export default function AdminDashboard() {
     } catch (err: any) {
       console.error('Error updating status:', err);
       setError(err.message || 'An error occurred while updating status.');
+    }
+  };
+
+  // Function to automatically assign a rider to a SHIPPED order
+  const autoAssignRider = async (orderId: string) => {
+    try {
+      // Get the order details
+      const orderToUpdate = orderList.find(order => order._id === orderId || order.id === orderId);
+      if (!orderToUpdate) {
+        throw new Error('Order not found');
+      }
+      
+      // Check if order already has a rider
+      if (orderToUpdate.riderId) {
+        console.log('Order already has a rider assigned, skipping auto-assignment');
+        return;
+      }
+      
+      // Just pick any rider from the list, regardless of current assignment status
+      if (riderList.length === 0) {
+        setError('No riders available in the system. Please add riders first.');
+        return;
+      }
+      
+      // Select a random rider for more even distribution of orders
+      const randomIndex = Math.floor(Math.random() * riderList.length);
+      const selectedRider = riderList[randomIndex];
+      
+      console.log(`Auto-assigning rider ${selectedRider.name} to order ${orderId}`);
+      
+      // Assign the rider to the order
+      const response = await orderAPI.assignRider(
+        orderId,
+        selectedRider._id,
+        selectedRider.name
+      );
+      
+      if (response && response.success) {
+        console.log('Auto-assignment successful:', response);
+      } else {
+        console.error('Auto-assignment failed:', response);
+        setError('Failed to auto-assign rider.');
+      }
+    } catch (err: any) {
+      console.error('Error auto-assigning rider:', err);
+      setError(err.message || 'An error occurred while auto-assigning rider.');
     }
   };
 
@@ -227,9 +279,9 @@ export default function AdminDashboard() {
       case SimplifiedOrderStatus.PAID:
         return [SimplifiedOrderStatus.SHIPPED];
       case SimplifiedOrderStatus.SHIPPED:
-        return [SimplifiedOrderStatus.DELIVERED, SimplifiedOrderStatus.UNDELIVERED];
+        return [SimplifiedOrderStatus.DELIVERED, SimplifiedOrderStatus.NOT_DELIVERED];
       case SimplifiedOrderStatus.DELIVERED:
-      case SimplifiedOrderStatus.UNDELIVERED:
+      case SimplifiedOrderStatus.NOT_DELIVERED:
         // Terminal states - no further transitions
         return [];
       default:
@@ -246,7 +298,7 @@ export default function AdminDashboard() {
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
       case SimplifiedOrderStatus.DELIVERED:
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case SimplifiedOrderStatus.UNDELIVERED:
+      case SimplifiedOrderStatus.NOT_DELIVERED:
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
@@ -262,12 +314,21 @@ export default function AdminDashboard() {
   };
   
   return (
-    // Full page admin dashboard with sidebar layout
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      {/* Sidebar */}
-      <div className="w-64 bg-white dark:bg-gray-800 shadow-md">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+    // Full page admin dashboard with sidebar layout - now with responsive design
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100 dark:bg-gray-900">
+      {/* Sidebar - collapsible on mobile */}
+      <div className="w-full md:w-64 bg-white dark:bg-gray-800 shadow-md md:min-h-screen">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-800 dark:text-white">Admin Panel CoolGarmi</h2>
+          {/* Mobile menu button - only visible on small screens */}
+          <button 
+            className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+            onClick={() => setActiveTab(activeTab === 'orders' ? 'riders' : 'orders')}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+            </svg>
+          </button>
         </div>
         <div className="py-4">
           <ul>
@@ -307,10 +368,10 @@ export default function AdminDashboard() {
         </div>
       </div>
       
-      {/* Main content */}
+      {/* Main content - responsive */}
       <div className="flex-1 overflow-auto">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+        <div className="p-4 md:p-6">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-4 md:mb-6">
             {activeTab === 'orders' ? 'Orders Management' : 'Riders Management'}
           </h1>
           
@@ -328,26 +389,26 @@ export default function AdminDashboard() {
             </div>
           )}
           
-          {/* Orders Tab Content */}
+          {/* Orders Tab Content - with scroll for small screens */}
           {activeTab === 'orders' && !loading && (
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rider</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                      <th className="hidden md:table-cell px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rider</th>
+                      <th className="hidden md:table-cell px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date</th>
+                      <th className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                     {orderList.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                        <td colSpan={7} className="px-3 md:px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                           No orders found
                         </td>
                       </tr>
@@ -362,23 +423,23 @@ export default function AdminDashboard() {
                         
                         return (
                           <tr key={orderId}>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                               <span className="font-medium text-gray-900 dark:text-white">#{orderId.substring(orderId.length - 6)}</span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900 dark:text-white">{order.customerName}</div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">{order.customerPhone}</div>
+                              <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{order.customerPhone}</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                               <div className="text-sm font-medium text-gray-900 dark:text-white">₹{order.totalAmount.toLocaleString()}</div>
                               <div className="text-xs text-gray-500 dark:text-gray-400">{order.items.length} items</div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                               <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusBadgeClass(order.status)}`}>
                                 {order.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <td className="hidden md:table-cell px-3 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm">
                               {order.riderId ? (
                                 <div className="flex items-center justify-between">
                                   <span className="text-gray-900 dark:text-white">{order.riderName}</span>
@@ -399,7 +460,7 @@ export default function AdminDashboard() {
                                 </button>
                               )}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="hidden md:table-cell px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900 dark:text-white">
                                 {createdAt.toLocaleDateString()}
                               </div>
@@ -407,8 +468,8 @@ export default function AdminDashboard() {
                                 {updatedAt.toLocaleDateString()}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <div className="flex items-center space-x-2">
+                            <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm">
+                              <div className="flex flex-col md:flex-row md:items-center space-y-2 md:space-y-0 md:space-x-2">
                                 <button
                                   onClick={() => handleViewOrder(order)}
                                   className="text-primary hover:text-primary-dark dark:text-primary-light dark:hover:text-primary-light/80"
@@ -416,16 +477,35 @@ export default function AdminDashboard() {
                                   View
                                 </button>
                                 
+                                {/* On mobile, show assign rider button if not shown in a hidden column */}
+                                <div className="md:hidden">
+                                  {order.riderId ? (
+                                    <button
+                                      onClick={() => handleUnassignRider(orderId)}
+                                      className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                    >
+                                      Unassign
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => showAssignRider(order)}
+                                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                    >
+                                      Assign
+                                    </button>
+                                  )}
+                                </div>
+                                
                                 {allowedStatuses.length > 0 && (
                                   <select
                                     onChange={(e) => handleStatusChange(orderId, e.target.value as SimplifiedOrderStatus)}
-                                    className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary dark:bg-gray-700 dark:text-white"
+                                    className="text-xs md:text-sm border border-gray-300 dark:border-gray-600 rounded-md px-1 md:px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary dark:bg-gray-700 dark:text-white"
                                     defaultValue=""
                                   >
                                     <option value="" disabled>Change status</option>
                                     {allowedStatuses.map((status) => (
                                       <option key={status} value={status}>
-                                        Update to {status}
+                                        {status}
                                       </option>
                                     ))}
                                   </select>
@@ -442,30 +522,30 @@ export default function AdminDashboard() {
             </div>
           )}
           
-          {/* Riders Tab Content */}
+          {/* Riders Tab Content - responsive grid layout */}
           {activeTab === 'riders' && !loading && (
             <div>
-              {/* Summary stats for riders */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {/* Summary stats for riders - responsive grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Total Riders</h3>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{riderList.length}</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{riderList.length}</p>
                 </div>
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Active Riders</h3>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                     {Object.keys(ordersByRider).length}
                   </p>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 sm:col-span-2 md:col-span-1">
                   <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Available Riders</h3>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">
                     {riderList.length - Object.keys(ordersByRider).length}
                   </p>
                 </div>
               </div>
               
-              {/* All riders list */}
+              {/* All riders list - responsive table */}
               <div className="mb-8">
                 <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">All Riders</h2>
                 {riderList.length === 0 ? (
@@ -474,69 +554,71 @@ export default function AdminDashboard() {
                   </div>
                 ) : (
                   <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {riderList.map(rider => {
-                          const riderOrders = ordersByRider[rider._id] || [];
-                          const isActive = riderOrders.length > 0;
-                          
-                          return (
-                            <tr key={rider._id}>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                                    {rider.name.charAt(0).toUpperCase()}
-                                  </div>
-                                  <div className="ml-4">
-                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{rider.name}</div>
-                                    <div className="text-sm text-gray-500 dark:text-gray-400">ID: {rider._id.substring(rider._id.length - 6)}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-gray-900 dark:text-white">{rider.email}</div>
-                                <div className="text-sm text-gray-500 dark:text-gray-400">{rider.phone || 'No phone'}</div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  isActive 
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500' 
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                                }`}>
-                                  {isActive ? 'Active' : 'Available'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                                {riderOrders.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
+                          <tr>
+                            <th scope="col" className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                            <th scope="col" className="hidden sm:table-cell px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                            <th scope="col" className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                            <th scope="col" className="px-3 md:px-6 py-2 md:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Orders</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                          {riderList.map(rider => {
+                            const riderOrders = ordersByRider[rider._id] || [];
+                            const isActive = riderOrders.length > 0;
+                            
+                            return (
+                              <tr key={rider._id}>
+                                <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                                   <div className="flex items-center">
-                                    <span>{riderOrders.length} {riderOrders.length === 1 ? 'order' : 'orders'}</span>
+                                    <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                                      {rider.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="ml-4">
+                                      <div className="text-sm font-medium text-gray-900 dark:text-white">{rider.name}</div>
+                                      <div className="text-sm text-gray-500 dark:text-gray-400">ID: {rider._id.substring(rider._id.length - 6)}</div>
+                                    </div>
                                   </div>
-                                ) : (
-                                  'No orders assigned'
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                </td>
+                                <td className="hidden sm:table-cell px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                  <div className="text-sm text-gray-900 dark:text-white">{rider.email}</div>
+                                  <div className="text-sm text-gray-500 dark:text-gray-400">{rider.phone || 'No phone'}</div>
+                                </td>
+                                <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
+                                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                    isActive 
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-500' 
+                                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+                                  }`}>
+                                    {isActive ? 'Active' : 'Available'}
+                                  </span>
+                                </td>
+                                <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                  {riderOrders.length > 0 ? (
+                                    <div className="flex items-center">
+                                      <span>{riderOrders.length} {riderOrders.length === 1 ? 'order' : 'orders'}</span>
+                                    </div>
+                                  ) : (
+                                    'No orders assigned'
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
               
-              {/* Riders with assigned orders */}
+              {/* Riders with assigned orders - responsive grid */}
               {Object.keys(ordersByRider).length > 0 && (
                 <div>
                   <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Riders with Assigned Orders</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {Object.entries(ordersByRider).map(([riderId, riderOrders]) => {
                       const firstOrder = riderOrders[0]; // To get rider name
                       if (!firstOrder) return null;
@@ -604,26 +686,26 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Order Details Modal */}
+      {/* Order Details Modal - responsive */}
       {showOrderModal && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 p-4">
-              <h3 className="text-xl font-medium text-gray-900 dark:text-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 p-3 md:p-4">
+              <h3 className="text-lg md:text-xl font-medium text-gray-900 dark:text-white">
                 Order #{(selectedOrder._id || selectedOrder.id || '').substring((selectedOrder._id || selectedOrder.id || '').length - 6)}
               </h3>
               <button 
                 onClick={closeOrderModal}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Order Information */}
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                {/* Order and Customer Information - stacked on mobile */}
                 <div>
                   <h4 className="font-medium text-gray-800 dark:text-white mb-2">Order Information</h4>
                   <div className="space-y-2 text-sm">
@@ -672,40 +754,42 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              {/* Order Items */}
-              <div className="mt-6">
+              {/* Order Items - horizontally scrollable on mobile */}
+              <div className="mt-4 md:mt-6">
                 <h4 className="font-medium text-gray-800 dark:text-white mb-2">Order Items</h4>
                 <div className="border rounded-md dark:border-gray-700 overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-700">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Item</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Variant</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantity</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {selectedOrder.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                            {item.productName || item.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {item.color && item.size ? `${item.color}, ${item.size}` : 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.quantity}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">₹{item.price.toFixed(2)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">₹{(item.quantity * item.price).toFixed(2)}</td>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Item</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Variant</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Quantity</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Price</th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {selectedOrder.items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {item.productName || item.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {item.color && item.size ? `${item.color}, ${item.size}` : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{item.quantity}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">₹{item.price.toFixed(2)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">₹{(item.quantity * item.price).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
               
-              {/* Rider Information (if assigned) */}
+              {/* Rider Information - responsive layout */}
               <div className="mt-6">
                 <h4 className="font-medium text-gray-800 dark:text-white mb-2">Delivery Information</h4>
                 {selectedOrder.riderId ? (
@@ -754,24 +838,24 @@ export default function AdminDashboard() {
         </div>
       )}
       
-      {/* Assign Rider Modal */}
+      {/* Assign Rider Modal - responsive */}
       {showAssignRiderModal && orderToAssign && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full">
-            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 p-4">
-              <h3 className="text-xl font-medium text-gray-900 dark:text-white">
-                Assign Rider to Order #{(orderToAssign._id || orderToAssign.id || '').substring((orderToAssign._id || orderToAssign.id || '').length - 6)}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 md:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg">
+            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 p-3 md:p-4">
+              <h3 className="text-lg md:text-xl font-medium text-gray-900 dark:text-white">
+                Assign Rider
               </h3>
               <button 
                 onClick={closeAssignRiderModal}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Select Rider

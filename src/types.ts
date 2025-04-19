@@ -21,7 +21,7 @@ export enum OrderStatus {
   PAID = 'PAID',
   SHIPPED = 'SHIPPED',
   DELIVERED = 'DELIVERED',
-  UNDELIVERED = 'UNDELIVERED',
+  NOT_DELIVERED = 'NOT_DELIVERED',
 }
 
 // This is a barrel file that re-exports everything from types/index.ts

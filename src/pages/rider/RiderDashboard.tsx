@@ -5,13 +5,10 @@ import { orderAPI } from '../../services/api';
 
 // Define the OrderStatus enum to match backend values exactly
 enum OrderStatus {
-  PLACED = 'PLACED',
   PAID = 'PAID',
   SHIPPED = 'SHIPPED',
-  IN_TRANSIT = 'IN_TRANSIT',
   DELIVERED = 'DELIVERED',
-  UNDELIVERED = 'NOT_DELIVERED', // Changed to match backend
-  CANCELLED = 'CANCELLED'
+  NOT_DELIVERED = 'NOT_DELIVERED'
 }
 
 // Define the Order type if it's not properly imported
@@ -140,9 +137,7 @@ export default function RiderDashboard() {
   const getAllowedStatusesForRider = (currentStatus: OrderStatus): OrderStatus[] => {
     switch (currentStatus) {
       case OrderStatus.SHIPPED:
-        return [OrderStatus.IN_TRANSIT];
-      case OrderStatus.IN_TRANSIT:
-        return [OrderStatus.DELIVERED, OrderStatus.UNDELIVERED];
+        return [OrderStatus.DELIVERED, OrderStatus.NOT_DELIVERED];
       default:
         return [];
     }
@@ -151,16 +146,13 @@ export default function RiderDashboard() {
   // Function to get badge color based on order status
   const getStatusBadgeClass = (status: OrderStatus): string => {
     switch (status) {
-      case OrderStatus.PLACED:
       case OrderStatus.PAID:
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
       case OrderStatus.SHIPPED:
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case OrderStatus.IN_TRANSIT:
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
       case OrderStatus.DELIVERED:
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case OrderStatus.UNDELIVERED:
+      case OrderStatus.NOT_DELIVERED:
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
@@ -176,16 +168,10 @@ export default function RiderDashboard() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         );
-      case OrderStatus.UNDELIVERED:
+      case OrderStatus.NOT_DELIVERED:
         return (
           <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        );
-      case OrderStatus.IN_TRANSIT:
-        return (
-          <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         );
       default:
@@ -393,7 +379,7 @@ export default function RiderDashboard() {
                             className={`flex items-center px-3 py-2 rounded-md text-sm font-medium ${
                               status === OrderStatus.DELIVERED 
                                 ? 'bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60' 
-                                : status === OrderStatus.UNDELIVERED
+                                : status === OrderStatus.NOT_DELIVERED
                                 ? 'bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60'
                                 : 'bg-indigo-100 text-indigo-800 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:hover:bg-indigo-900/60'
                             }`}

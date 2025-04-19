@@ -43,7 +43,7 @@ export enum OrderStatus {
   DELIVERED = 'DELIVERED',
   PLACED = 'PLACED',
   ON_THE_WAY = 'ON_THE_WAY',
-  UNDELIVERED = 'UNDELIVERED',
+  NOT_DELIVERED = 'NOT_DELIVERED',
 }
 
 export interface OrderItem {
