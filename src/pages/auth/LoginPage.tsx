@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
 import { Mail, Lock, ArrowLeft, ShoppingBag, Truck, AlertCircle } from 'lucide-react';
+import GoogleLoginButton from '../../components/GoogleLoginButton';
 
 interface LocationState {
   from?: string;
@@ -80,6 +81,14 @@ export default function LoginPage() {
     }
   };
   
+  const handleLoginSuccess = () => {
+    // Navigate based on user role, handled by AuthContext/effects
+  };
+  
+  const handleLoginFailure = (error: Error) => {
+    setError(error.message || 'Google login failed. Please try again.');
+  };
+  
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
@@ -153,6 +162,18 @@ export default function LoginPage() {
                   {isLoading ? 'Signing in...' : 'Sign In'}
                 </button>
               </form>
+              
+              <div className="mt-4 flex items-center justify-center">
+                <div className="border-t border-gray-300 dark:border-gray-600 flex-grow"></div>
+                <div className="mx-4 text-gray-500 dark:text-gray-400 text-sm">OR</div>
+                <div className="border-t border-gray-300 dark:border-gray-600 flex-grow"></div>
+              </div>
+              
+              {/* Google Login only for customer view */}
+              <GoogleLoginButton 
+                onSuccess={handleLoginSuccess}
+                onFailure={handleLoginFailure}
+              />
               
               <div className="text-center mt-4">
                 <button 

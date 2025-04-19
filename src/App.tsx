@@ -22,6 +22,7 @@ import RiderDashboard from './pages/rider/RiderDashboard';
 import OrdersPage from './pages/customer/OrdersPage';
 import OrderDetailPage from './pages/customer/OrderDetailPage';
 import ContactPage from './pages/ContactPage';
+import AuthCallback from './pages/auth/AuthCallback';
 
 // Protected route component
 interface ProtectedRouteProps {
@@ -202,6 +203,8 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        
+        <Route path="/auth/callback" element={<AuthCallback />} />
         
         {/* 404 Route */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -2,13 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/api';
 import { User } from '../types';
 
-
 // Define the AuthContext type
 export interface AuthContextType {
   currentUser: User | null;
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<User>;
-  loginWithGoogle: () => Promise<User>;
+  loginWithGoogle: () => Promise<void>;
+  handleGoogleCallback: (tokenResponse: any) => Promise<User>;
+  handleAuthToken: (token: string) => Promise<User>;
   signup: (name: string, email: string, password: string, phone?: string) => Promise<User>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -125,16 +126,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Google login function
-  const loginWithGoogle = async (): Promise<User> => {
+  // Google login function - initiate OAuth flow
+  const loginWithGoogle = async (): Promise<void> => {
     setIsLoading(true);
     setError(null);
     try {
-      // For now, just return a redirect to the Google auth endpoint
-      window.location.href = authService.initiateGoogleLogin();
-      return {} as User; // This won't be reached due to redirect
+      // Redirect to Google auth endpoint
+      window.location.href = authService.getGoogleAuthUrl();
     } catch (err: any) {
       setError(err.message || 'Google login failed');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle Google callback with token
+  const handleGoogleCallback = async (tokenResponse: any): Promise<User> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log('Handling Google callback with token response:', tokenResponse);
+      
+      // Send the token to your backend
+      const response = await authService.authenticateWithGoogle(tokenResponse.credential);
+      
+      console.log('Google authentication response:', response);
+      
+      // Ensure we have a proper User object
+      let user: User;
+      if (response && typeof response === 'object') {
+        if ('user' in response && response.user) {
+          user = response.user as User;
+        } else {
+          user = response as User;
+        }
+        
+        // Check if it's an admin or rider
+        if (user.role === 'ADMIN' || user.role === 'RIDER') {
+          throw new Error('Google login is only available for customers');
+        }
+        
+        setCurrentUser(user);
+        // Save to sessionStorage to persist across page refreshes
+        sessionStorage.setItem('currentUser', JSON.stringify(user));
+        
+        return user;
+      }
+      throw new Error('Invalid response format from Google login');
+    } catch (err: any) {
+      setError(err.message || 'Google authentication failed');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle token from redirect auth flow
+  const handleAuthToken = async (token: string): Promise<User> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Log for debugging
+      console.log('Processing auth token in context');
+      
+      // Store the token
+      localStorage.setItem('authToken', token);
+      
+      // Process the token 
+      const user = await authService.handleAuthCallback(token);
+      
+      if (!user) {
+        throw new Error('Failed to get user details from token');
+      }
+      
+      console.log('User authenticated from token:', user);
+      
+      // Check if it's an admin or rider
+      if (user.role === 'ADMIN' || user.role === 'RIDER') {
+        throw new Error('Google login is only available for customers');
+      }
+      
+      setCurrentUser(user);
+      sessionStorage.setItem('currentUser', JSON.stringify(user));
+      return user;
+    } catch (err: any) {
+      console.error('Token processing error:', err);
+      setError(err.message || 'Authentication failed');
       throw err;
     } finally {
       setIsLoading(false);
@@ -151,6 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(null);
       // Clear the session storage on logout
       sessionStorage.removeItem('currentUser');
+      localStorage.removeItem('authToken');
     } catch (err) {
       console.error('Logout error:', err);
     }
@@ -162,6 +241,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       register, 
       loginWithGoogle, 
+      handleGoogleCallback,
+      handleAuthToken,
       signup, 
       logout, 
       isLoading, 

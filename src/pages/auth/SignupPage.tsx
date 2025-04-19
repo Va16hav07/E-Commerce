@@ -2,6 +2,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
+import GoogleLoginButton from '../../components/GoogleLoginButton';
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -36,6 +37,14 @@ export default function SignupPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  const handleGoogleSignupSuccess = () => {
+    console.log('Google signup successful');
+  };
+  
+  const handleGoogleSignupFailure = (error: Error) => {
+    setError(error.message || 'Google signup failed. Please try again.');
   };
   
   // Redirect if already logged in
@@ -167,6 +176,18 @@ export default function SignupPage() {
                 )}
               </button>
             </form>
+            
+            <div className="mt-4 flex items-center justify-center">
+              <div className="border-t border-gray-300 dark:border-gray-600 flex-grow"></div>
+              <div className="mx-4 text-gray-500 dark:text-gray-400 text-sm">OR</div>
+              <div className="border-t border-gray-300 dark:border-gray-600 flex-grow"></div>
+            </div>
+            
+            {/* Google Signup Button */}
+            <GoogleLoginButton
+              onSuccess={handleGoogleSignupSuccess}
+              onFailure={handleGoogleSignupFailure}
+            />
             
             <div className="mt-6 text-center text-sm">
               <span className="text-gray-600 dark:text-gray-400">Already have an account?</span>

@@ -79,37 +79,23 @@ export const authService = {
         } catch (fallbackError) {
           console.error('Fallback register endpoint failed too', fallbackError);
           
-          // Try a third endpoint /user/register
-          try {
-            console.log('Trying second fallback endpoint: /user/register');
-            const response = await api.post('/user/register', { name, email, password, phone });
-            console.log('Registration successful with second fallback endpoint', response.data);
-            return response.data.data;
-          } catch (secondFallbackError) {
-            console.error('Second fallback register endpoint failed too', secondFallbackError);
-            
-            // Try using the DataProvider as a last resort
-            console.log('Trying with DataProvider');
-            const data = await DataProvider.fetchWithFallback(
-              '/auth/register',
-              '/register',
-              {
-                method: 'POST',
-                body: JSON.stringify({ name, email, password, phone }),
-                credentials: 'include'
-              }
-            );
-            
-            console.log('Registration successful with DataProvider', data);
-            return data.data;
-          }
+          // Try using the DataProvider as a last resort
+          console.log('Trying with DataProvider');
+          const data = await DataProvider.fetchWithFallback(
+            '/auth/register',
+            '/register',
+            {
+              method: 'POST',
+              body: JSON.stringify({ name, email, password, phone })
+            }
+          );
+          
+          console.log('Registration successful with DataProvider', data);
+          return data.data;
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Registration error:', error);
-      if (error.response) {
-        console.error('Error response:', error.response.data);
-      }
       throw handleApiError(error as AxiosError, 'Registration failed');
     }
   },
@@ -122,12 +108,18 @@ export const authService = {
   // Get current user
   async getCurrentUser() {
     try {
+      // Add debug logging
+      console.log('Getting current user...');
+      
       const response = await api.get('/auth/me');
+      console.log('Current user response:', response.data);
+      
       if (response.data.success) {
         return response.data.user;
       }
       throw new Error('User not authenticated');
     } catch (error) {
+      console.error('Get current user error:', error);
       throw handleApiError(error as AxiosError, 'Failed to get current user');
     }
   },
@@ -140,7 +132,72 @@ export const authService = {
     } catch (error) {
       throw handleApiError(error as AxiosError, 'Logout failed');
     }
-  }
+  },
+
+  // Get Google Auth URL
+  getGoogleAuthUrl() {
+    // Use the server-side redirect approach
+    const redirectUri = encodeURIComponent(import.meta.env.VITE_REDIRECT_URI || `${window.location.origin}/auth/callback`);
+    return `${API_URL}/auth/google?redirect_uri=${redirectUri}`;
+  },
+  
+  // Authenticate with Google token
+  async authenticateWithGoogle(token: string) {
+    try {
+      console.log('Authenticating with Google token');
+      try {
+        const response = await api.post('/auth/google-callback', { token });
+        console.log('Google auth response:', response.data);
+        
+        // Store the token in local storage
+        if (response.data.data && response.data.data.token) {
+          localStorage.setItem('authToken', response.data.data.token);
+          api.defaults.headers.common['Authorization'] = `Bearer ${response.data.data.token}`;
+          return response.data.data;
+        } else if (response.data.token) {
+          localStorage.setItem('authToken', response.data.token);
+          api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+        }
+        
+        return response.data;
+      } catch (error) {
+        console.error('Google auth endpoint failed:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Google authentication error:', error);
+      throw handleApiError(error as AxiosError, 'Google authentication failed');
+    }
+  },
+  
+  // Handle token from redirect auth flow
+  async handleAuthCallback(token: string) {
+    try {
+      if (!token) {
+        throw new Error('No token provided in callback');
+      }
+      
+      console.log('Processing auth token in service');
+      
+      // Store the token
+      localStorage.setItem('authToken', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Fetch user details
+      try {
+        console.log('Fetching user details with token');
+        const response = await this.getCurrentUser();
+        console.log('User details retrieved:', response);
+        return response;
+      } catch (userError) {
+        console.error('Failed to get user details:', userError);
+        throw new Error('Failed to get user details with provided token');
+      }
+    } catch (error) {
+      console.error('Auth callback error:', error);
+      throw handleApiError(error as AxiosError, 'Failed to process authentication');
+    }
+  },
 };
 
 export const authAPI = {

@@ -15,14 +15,13 @@ export class DataProvider {
     fallbackEndpoint: string,
     fetchOptions: RequestInit = {}
   ): Promise<any> {
-    const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     
     try {
       console.log(`Trying primary endpoint: ${primaryEndpoint}`);
       const response = await fetch(`${baseUrl}${primaryEndpoint}`, {
         ...fetchOptions,
         mode: 'cors',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...fetchOptions.headers
@@ -30,8 +29,6 @@ export class DataProvider {
       });
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Primary endpoint failed with status: ${response.status}`, errorText);
         throw new Error(`Primary endpoint failed with status: ${response.status}`);
       }
       
@@ -41,52 +38,23 @@ export class DataProvider {
       console.log(`Trying fallback endpoint: ${fallbackEndpoint}`);
       
       try {
-        const secondResponse = await fetch(`${baseUrl}${fallbackEndpoint}`, {
+        const response = await fetch(`${baseUrl}${fallbackEndpoint}`, {
           ...fetchOptions,
           mode: 'cors',
-          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
             ...fetchOptions.headers
           }
         });
         
-        if (!secondResponse.ok) {
-          const errorText = await secondResponse.text();
-          console.error(`Fallback endpoint failed with status: ${secondResponse.status}`, errorText);
-          throw new Error(`Fallback endpoint failed with status: ${secondResponse.status}`);
+        if (!response.ok) {
+          throw new Error(`Fallback endpoint failed with status: ${response.status}`);
         }
         
-        return await secondResponse.json();
+        return await response.json();
       } catch (fallbackError) {
         console.log(`Fallback endpoint failed: ${fallbackError}`);
-        
-        // Try one more fallback to /user endpoint
-        try {
-          const thirdEndpoint = '/user' + fallbackEndpoint;
-          console.log(`Trying third fallback endpoint: ${thirdEndpoint}`);
-          
-          const thirdResponse = await fetch(`${baseUrl}${thirdEndpoint}`, {
-            ...fetchOptions,
-            mode: 'cors',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              ...fetchOptions.headers
-            }
-          });
-          
-          if (!thirdResponse.ok) {
-            const errorText = await thirdResponse.text();
-            console.error(`Third endpoint failed with status: ${thirdResponse.status}`, errorText);
-            throw new Error(`Third endpoint failed with status: ${thirdResponse.status}`);
-          }
-          
-          return await thirdResponse.json();
-        } catch (thirdError) {
-          console.error(`All endpoints failed. Last error:`, thirdError);
-          throw new Error(`All endpoints failed: ${primaryError}. Fallback: ${fallbackError}. Third: ${thirdError}`);
-        }
+        throw new Error(`All endpoints failed: ${primaryError}. Fallback: ${fallbackError}`);
       }
     }
   }
@@ -96,17 +64,14 @@ export class DataProvider {
    */
   static async checkBackendAvailability(): Promise<boolean> {
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
-      const response = await fetch(`${baseUrl}/health-check`, { 
+      await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/`, { 
         method: 'GET',
         mode: 'cors',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
       });
       
-      return response.ok;
+      return true;
     } catch (error) {
-      console.error("Backend availability check failed:", error);
       return false;
     }
   }
